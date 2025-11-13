@@ -38,6 +38,8 @@ RUN set -eux; \
 		intl \
 		opcache \
 		zip \
+		ffi \
+		bcmath \
 	;
 
 ###> recipes ###
@@ -55,6 +57,9 @@ ENTRYPOINT ["docker-entrypoint"]
 
 HEALTHCHECK --start-period=60s CMD curl -f http://localhost:2019/metrics || exit 1
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile" ]
+
+#DUCKDB
+RUN curl https://install.duckdb.org | sh
 
 # Dev FrankenPHP image
 FROM frankenphp_base AS frankenphp_dev

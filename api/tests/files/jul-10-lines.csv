@@ -1,0 +1,10 @@
+settlement-id,settlement-start-date,settlement-end-date,deposit-date,total-amount,currency,transaction-type,order-id,merchant-order-id,adjustment-id,shipment-id,marketplace-name,amount-type,amount-description,amount,fulfillment-id,posted-date,posted-date-time,order-item-code,merchant-order-item-id,merchant-adjustment-item-id,sku,quantity-purchased,promotion-id
+24022078181,2025-06-29 08:21:53 UTC,2025-07-03 11:40:49 UTC,2025-07-05 11:40:49 UTC,287044.2,USD,,,,,,,,,,,,,,,,,,
+24022078181,,,,,,Order,113-2914540-8937025,113-2914540-8937025,,BkFxwnzS6,Amazon.com,ItemWithheldTax,MarketplaceFacilitatorTax-Principal,-4.82,AFN,30/06/2025,2025-06-30 09:46:32 UTC,130342553830161,,,NHJ-SB-stickerless,2,
+24022078181,,,,,,Order,113-2914540-8937025,113-2914540-8937025,,BkFxwnzS6,Amazon.com,ItemFees,FBAPerUnitFulfillmentFee,-8.3,AFN,30/06/2025,2025-06-30 09:46:32 UTC,130342553830161,,,NHJ-SB-stickerless,2,
+24022078181,,,,,,Order,113-2914540-8937025,113-2914540-8937025,,BkFxwnzS6,Amazon.com,ItemFees,Commission,-9.34,AFN,30/06/2025,2025-06-30 09:46:32 UTC,130342553830161,,,NHJ-SB-stickerless,2,
+24022078181,,,,,,Order,113-2914540-8937025,113-2914540-8937025,,BkFxwnzS6,Amazon.com,Promotion,Principal,-7.79,AFN,30/06/2025,2025-06-30 09:46:32 UTC,130342553830161,,,NHJ-SB-stickerless,2,Subscribe and Save Promotion
+24022078181,,,,,,Order,113-2914540-8937025,113-2914540-8937025,,BkFxwnzS6,Amazon.com,Promotion,Principal,-7.79,AFN,30/06/2025,2025-06-30 09:46:32 UTC,130342553830161,,,NHJ-SB-stickerless,2,Percentage Off 2025/05/09 16-44-6-828
+24022078181,,,,,,Order,113-7402954-7556253,113-7402954-7556253,,BvVTZsZW6,Amazon.com,ItemPrice,Principal,49.95,AFN,30/06/2025,2025-06-30 09:33:34 UTC,130587278443961,,,NHJ-LB-stickerless,1,
+24022078181,,,,,,Order,113-7402954-7556253,113-7402954-7556253,,BvVTZsZW6,Amazon.com,ItemFees,FBAPerUnitFulfillmentFee,-4.15,AFN,30/06/2025,2025-06-30 09:33:34 UTC,130587278443961,,,NHJ-LB-stickerless,1,
+24022078181,,,,,,Order,113-7402954-7556253,113-7402954-7556253,,BvVTZsZW6,Amazon.com,ItemFees,Commission,-6.74,AFN,30/06/2025,2025-06-30 09:33:34 UTC,130587278443961,,,NHJ-LB-stickerless,1,
