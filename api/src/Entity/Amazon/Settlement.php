@@ -2,16 +2,26 @@
 
 namespace App\Entity\Amazon;
 
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Operations;
 use App\Entity\Amazon\Settlement\TransactionTotal;
 use App\Entity\Amazon\Settlement\UnitsSold;
 use App\Entity\Seller;
+use App\Entity\Seller\Csv;
 use App\Repository\Amazon\SettlementRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\ApiResource;
 
 #[ORM\Entity(repositoryClass: SettlementRepository::class)]
+#[ApiResource(
+    security: "is_granted('ROLE_USER')",
+    operations: [
+        new GetCollection(),
+    ]
+)]
 class Settlement
 {
     #[ORM\Id]
@@ -51,6 +61,10 @@ class Settlement
      */
     #[ORM\OneToMany(targetEntity: UnitsSold::class, mappedBy: 'settlement')]
     private Collection $unitsSolds;
+
+    #[ORM\ManyToOne(inversedBy: 'settlements')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Csv $csv = null;
 
     public function __construct()
     {
@@ -215,6 +229,18 @@ class Settlement
                 $unitsSold->setSettlement(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getCsv(): ?Csv
+    {
+        return $this->csv;
+    }
+
+    public function setCsv(?Csv $csv): static
+    {
+        $this->csv = $csv;
 
         return $this;
     }

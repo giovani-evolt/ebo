@@ -3,10 +3,14 @@
 namespace App\Entity\Seller;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use App\Controller\UploadCsvController;
+use App\Entity\Amazon\Settlement;
 use App\Entity\Seller;
 use App\Repository\Seller\CsvRepository;
 use App\State\CsvStateProcessor;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -19,11 +23,13 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\OpenApi\Model;
 use ApiPlatform\Metadata\ApiProperty;
 use Symfony\Component\Serializer\Annotation\Groups;
+use function Zenstruck\Foundry\Persistence\persist;
 
 #[ORM\Entity(repositoryClass: CsvRepository::class)]
 #[ApiResource(
     normalizationContext: ['groups' => ['read']], 
     outputFormats: ['jsonld' => ['application/ld+json']],
+    security: "is_granted('ROLE_USER')",
     operations: [
         new Get(),
         new GetCollection(),
@@ -31,16 +37,19 @@ use Symfony\Component\Serializer\Annotation\Groups;
             outputFormats: ['jsonld' => ['application/ld+json']],
             inputFormats: ['multipart' => ['multipart/form-data']],
             processor: CsvStateProcessor::class,
-        )
+        ),
+        new Delete()
     ]
 )]
 #[Vich\Uploadable]
 class Csv
 {
 
-    CONST STATUS_PENDING    = 1000;
-    CONST STATUS_WIP        = 2000;
-    CONST STATUS_DONE       = 3000;
+    CONST STATUS_PENDING        = 1000;
+    CONST STATUS_WIP            = 2000;
+
+    CONST STATUS_WITH_ERRORS    = 3000;
+    CONST STATUS_DONE           = 3000;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -59,7 +68,7 @@ class Csv
     #[Groups(['write'])]
     public ?File $file = null;
 
-    #[ORM\Column(nullable: false)]
+    #[ORM\Column(nullable: true)]
     #[Groups(['read'])]
     private ?string $filename = null;
 
@@ -75,7 +84,7 @@ class Csv
     #[Groups(['read'])]
     private ?string $errors = null;
 
-    #[ORM\ManyToOne(inversedBy: 'csvs')]
+    #[ORM\ManyToOne(inversedBy: 'csvs', cascade: ['persist'], fetch: 'EAGER')]
     #[Groups(['write'])]
     private ?Seller $seller = null;
 
@@ -83,10 +92,20 @@ class Csv
     #[Groups(['read'])]
     private ?int $type = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?array $messages = null;
+
+    /**
+     * @var Collection<int, Settlement>
+     */
+    #[ORM\OneToMany(targetEntity: Settlement::class, mappedBy: 'csv', orphanRemoval: true)]
+    private Collection $settlements;
+
     public function __construct()
     {
         $this->code = Uuid::v4();
         $this->created_at = new \DateTimeImmutable();
+        $this->settlements = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -111,7 +130,7 @@ class Csv
         return $this->filename;
     }
 
-    public function setFilename(string $filename): static
+    public function setFilename(?string $filename): static
     {
         $this->filename = $filename;
 
@@ -181,5 +200,51 @@ class Csv
     public function getFile(): ?File
     {
         return $this->file;
+    }
+
+    public function getFileWithSellerPath(){
+        return '/app/csv/'.$this->getSeller()->getCode().'/'.$this->getFilename();
+    }
+
+    public function getMessages(): ?array
+    {
+        return $this->messages;
+    }
+
+    public function setMessages(?array $messages): static
+    {
+        $this->messages = $messages;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Settlement>
+     */
+    public function getSettlements(): Collection
+    {
+        return $this->settlements;
+    }
+
+    public function addSettlement(Settlement $settlement): static
+    {
+        if (!$this->settlements->contains($settlement)) {
+            $this->settlements->add($settlement);
+            $settlement->setCsv($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSettlement(Settlement $settlement): static
+    {
+        if ($this->settlements->removeElement($settlement)) {
+            // set the owning side to null (unless already changed)
+            if ($settlement->getCsv() === $this) {
+                $settlement->setCsv(null);
+            }
+        }
+
+        return $this;
     }
 }

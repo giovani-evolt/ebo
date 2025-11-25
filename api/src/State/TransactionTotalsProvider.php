@@ -6,17 +6,15 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Repository\Amazon\Settlement\TransactionTotalRepository;
-
+use Symfony\Bundle\SecurityBundle\Security;
 
 class TransactionTotalsProvider implements ProviderInterface
 {
-
-    protected $transactionTotalRepository;
-
     public function __construct(
-        private TransactionTotalRepository $repository
-    ){
-        $this->transactionTotalRepository = $repository;
+        private TransactionTotalRepository $repository,
+        private Security $security
+    )
+    {
     }
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
@@ -26,10 +24,12 @@ class TransactionTotalsProvider implements ProviderInterface
 
             $year = $filters['year'] ?? null;
             $month = $filters['month'] ?? null;
+            $seller = $this->security->getUser()->getSeller();  
 
-            $result = $this->transactionTotalRepository->getSummaryByYearMonth(
+            $result = $this->repository->getSummaryByYearMonth(
                 $year,
-                $month
+                $month,
+                $seller
             );
 
             return $result;

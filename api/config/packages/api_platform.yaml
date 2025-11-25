@@ -13,3 +13,9 @@ api_platform:
         multipart: ['multipart/form-data']
         jsonld: ['application/ld+json']
 
+    swagger:
+        api_keys:
+            JWT:
+                name: Authorization
+                type: header
+        versions: [3]

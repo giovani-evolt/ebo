@@ -12,12 +12,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 class AbstractTest extends ApiTestCase
 {
     CONST API_USER_URL = '/api/users';
-    CONST API_USER_LOGIN_URL = '/auth/login';
-    CONST API_SELLER_URL = '/sellers';
-    CONST API_CSV_URL = '/csvs';
-    CONST API_SETTLEMENT_URL = '/settlements';
-    CONST API_TRANSACTION_TOTALS_URL = '/transaction_totals';
-    CONST API_UNITS_SOLD_TOTAL_URL = '/units_sold';
+
+    CONST API_USER_ME_URL = '/api/user/me';
+    CONST API_USER_LOGIN_URL = '/api/login_check';
+    CONST API_SELLER_URL = '/api/sellers';
+    CONST API_CSV_URL = '/api/csvs';
+    CONST API_SETTLEMENT_URL = '/api/settlements';
+    CONST API_TRANSACTION_TOTALS_URL = '/api/transaction_totals';
+    CONST API_UNITS_SOLD_TOTAL_URL = '/api/units_sold';
     
     private ?EntityManagerInterface $entityManager;
     
@@ -56,5 +58,17 @@ class AbstractTest extends ApiTestCase
             $newfile,
             'uploaded-'.$filename,
         );
+    }
+
+    protected function getHeaders($token = null): array
+    {
+        if (!self::$token) {
+            throw new \RuntimeException('No token available');
+        }
+        return [
+            'Accept' => 'application/ld+json',
+            'Content-Type' => 'application/ld+json',
+            'Authorization' => sprintf('Bearer %s', $token ?? self::$token)
+        ];
     }
 }

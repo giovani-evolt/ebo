@@ -7,12 +7,18 @@ use App\Entity\Amazon\Settlement;
 use App\Repository\Amazon\Settlement\UnitsSoldRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\GetCollection;
 
 #[ORM\Entity(repositoryClass: UnitsSoldRepository::class)]
 #[ORM\Table(uniqueConstraints: [
     new ORM\UniqueConstraint(name: 'uniq_settlement_type_description_year_month', columns: ['settlement', 'total_type', 'amount_description', 'year', 'month', 'sku'])
 ])]
-#[ApiResource]
+#[ApiResource(
+    security: "is_granted('ROLE_USER')",
+    operations: [
+        new GetCollection(),
+    ]
+)]
 class UnitsSold
 {
     #[ORM\Id]

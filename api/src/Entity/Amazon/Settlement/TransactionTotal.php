@@ -25,7 +25,8 @@ use ApiPlatform\OpenApi\Model;
     denormalizationContext: ['groups' => ['settlement:write']],
     operations: [
         new GetCollection(provider: TransactionTotalsProvider::class),
-    ]
+    ],
+    security: "is_granted('ROLE_USER')",
 )]
 #[ApiFilter(SearchFilter::class, properties: [
     'totalType' => 'exact',

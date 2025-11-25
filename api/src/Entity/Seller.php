@@ -12,10 +12,15 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 use ApiPlatform\Metadata\ApiProperty;
 use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use App\State\SellerStateProcessor;
 
 #[Vich\Uploadable]
 #[ORM\Entity(repositoryClass: SellerRepository::class)]
-#[ApiResource]
+#[ApiResource(
+    processor: SellerStateProcessor::class,
+    security: "is_granted('ROLE_USER')",
+    securityMessage: 'Solo puedes ver proyectos a los que perteneces.'
+)]
 class Seller
 {
     
@@ -47,8 +52,14 @@ class Seller
     /**
      * @var Collection<int, Csv>
      */
-    #[ORM\OneToMany(targetEntity: Csv::class, mappedBy: 'seller')]
+    #[ORM\OneToMany(targetEntity: Csv::class, mappedBy: 'seller', cascade: ['persist', 'remove'])]
     private Collection $csvs;
+
+    /**
+     * @var Collection<int, User>
+     */
+    #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'seller')]
+    private Collection $users;
 
     public function __construct()
     {
@@ -57,6 +68,7 @@ class Seller
         $this->created_at = new \DateTimeImmutable();
         $this->updated_at = new \DateTimeImmutable();
         $this->csvs = new ArrayCollection();
+        $this->users = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -174,5 +186,35 @@ class Seller
 
     public function getFolder(){
         return sprintf('sellers/%s/', $this->getCode().'/');
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getUsers(): Collection
+    {
+        return $this->users;
+    }
+
+    public function addUser(User $user): static
+    {
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->setSeller($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUser(User $user): static
+    {
+        if ($this->users->removeElement($user)) {
+            // set the owning side to null (unless already changed)
+            if ($user->getSeller() === $this) {
+                $user->setSeller(null);
+            }
+        }
+
+        return $this;
     }
 }

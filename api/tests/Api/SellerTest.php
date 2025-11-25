@@ -3,30 +3,82 @@
 namespace App\Tests\Api;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
+use App\Command\ProcessCsvsCommand;
 use App\Entity\Amazon\Settlement\TransactionTotal;
 use App\Entity\Seller\Csv;
 use PHPUnit\Framework\Attributes\Depends;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use App\Service\IngestService;
+use Symfony\Component\Console\Tester\CommandTester;
 
 class SellerTest extends AbstractTest
 {
-    public function testCreateSeller(): void
-    {
+  
+    public function testCreateAccount(): void{
+      $response = static::createClient()->request('POST', self::API_USER_URL, [
+          'json' => [
+              'name' => 'Wuffes',
+              'lastName' => 'Shop',
+              'email' => 'finanzas@wuffes.shop',
+              'plainPassword' => 'wuffespass'
+          ],
+          'headers' => [
+              'Content-Type' => 'application/ld+json',
+          ],
+      ]);
+
+      self::$data['user'] = $response->toArray();
+
+      $this->assertResponseStatusCodeSame(201);
+      $this->assertJsonContains([
+          '@context' => '/api/contexts/User',
+          '@type' => 'User',
+      ]);
+
+      $this->assertEquals('finanzas@wuffes.shop', self::$data['user']['email']);
+    }
+
+    #[Depends('testCreateAccount')]  
+    public function testLogin(): void{
+      $response = static::createClient()->request('POST', self::API_USER_LOGIN_URL, [
+          'json' => [
+              'username' => 'finanzas@wuffes.shop',
+              'password' => 'wuffespass',
+          ],
+          'headers' => [
+              'Content-Type' => 'application/ld+json',
+          ],
+      ]);
+
+      self::$token = $response->toArray()['token'];
+
+      $this->assertResponseStatusCodeSame(200);
+    }
+
+    #[Depends('testLogin')]  
+    public function testUserMe(): void{
+      $response = static::createClient()->request('GET', self::API_USER_ME_URL, [
+          'headers' => $this->getHeaders(),
+      ]);
+
+      $this->assertResponseStatusCodeSame(200);
+      $this->assertEquals('finanzas@wuffes.shop', $response->toArray()['email']);
+    }
+
+    #[Depends('testUserMe')]  
+    public function testCreateSeller(): void{
         $response = static::createClient()->request('POST', self::API_SELLER_URL, [
             'json' => [
                 'name' => 'Wuffes Shop',
             ],
-            'headers' => [
-                'Content-Type' => 'application/ld+json',
-            ],
+            'headers' => $this->getHeaders(),
         ]);
 
-        self::$data['seller'] = $response->toArray();
+        self::$data['seller'] = $response->toArray(false);
 
         $this->assertResponseStatusCodeSame(201);
         $this->assertJsonContains([
-            '@context' => '/contexts/Seller',
+            '@context' => '/api/contexts/Seller',
             '@type' => 'Seller',
         ]);
 
@@ -49,8 +101,11 @@ class SellerTest extends AbstractTest
 
           $client = self::createClient();
 
-          $response = $client->request('POST', '/csvs', [
-            'headers' => ['Content-Type' => 'multipart/form-data'],
+          $response = $client->request('POST', self::API_CSV_URL, [
+            'headers' => array_merge(
+              $this->getHeaders(),
+              ['Content-Type' => 'multipart/form-data']
+            ),
             'extra' => [
               // If you have additional fields in your MediaObject entity, use the parameters.
               'parameters' => [
@@ -75,24 +130,25 @@ class SellerTest extends AbstractTest
     {
       $ingestService = static::getContainer()->get(IngestService::class);
 
-      foreach(self::$data['csv'] as $idx => $csv){
-        $ingestService
-          ->setTmpFilePath('/app/csv/'.$csv['filename'])
-          ->ingestSettlement();
-      }
+      $container = self::getContainer();
+      $command = $container->get(ProcessCsvsCommand::class);
+      $tester = new CommandTester($command);
+  
+      $tester->execute([]);
+  
+      // Validar la salida del comando
+      $this->assertStringContainsString('Processed CSV', $tester->getDisplay());
 
       $client = self::createClient();
       $response = $client->request('GET', self::API_TRANSACTION_TOTALS_URL, [
-        'headers' => [
-            'Content-Type' => 'application/ld+json',
-        ],
+        'headers' => $this->getHeaders(),
         'query' => [
           'year' => 2025,
           'month' => 7,
         ],
       ]);
 
-      $results = $response->toArray(false)['member'];
+      $results = $response->toArray()['member'];
 
       $totals = [];
       foreach($results as $result){
@@ -109,9 +165,7 @@ class SellerTest extends AbstractTest
     public function testGetResumeByLatestMonth(){
       $client = self::createClient();
       $response = $client->request('GET', self::API_TRANSACTION_TOTALS_URL, [
-        'headers' => [
-            'Content-Type' => 'application/ld+json',
-        ],
+        'headers' => $this->getHeaders(),
       ]);
 
       $results = $response->toArray(false)['member'];
@@ -120,8 +174,6 @@ class SellerTest extends AbstractTest
       foreach($results as $result){
         $totals[$result['totalType']][$result['month']] = $result['totalAmount'];
       }
-
-      dd($results);
 
       $this->assertEquals(148066.71, $totals['GRSS'][8]);
     }

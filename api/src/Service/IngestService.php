@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Amazon\Settlement;
 use App\Entity\Amazon\Settlement\TransactionTotal;
 use App\Entity\Amazon\Settlement\UnitsSold;
+use App\Entity\Seller\Csv;
 use App\Exceptions\IngestException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Saturio\DuckDB\DuckDB;
@@ -13,20 +14,13 @@ use Doctrine\Persistence\ManagerRegistry;
 
 class IngestService
 {
-    protected $tmpFilePath;
+    protected $filePath;
 
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ManagerRegistry $doctrine,
     )
     {
-    }
-
-    public function setTmpFilePath($path)
-    {
-        $this->tmpFilePath = $path;
-
-        return $this;
     }
 
     protected function getTransactionType($row): mixed{
@@ -70,7 +64,7 @@ class IngestService
                 extract("month" from "posted-date") AS month,
                 SUM(CAST(amount AS DOUBLE)) AS total_amount,
                 SUM(CAST("quantity-purchased" AS INT)) AS total_qty_purchased
-            FROM "{$this->tmpFilePath}"
+            FROM "{$this->filePath}"
             WHERE 
                 "marketplace-name" = 'Amazon.com'
                 AND "transaction-type" = 'Order'
@@ -88,7 +82,7 @@ class IngestService
             SELECT
                 "settlement-id",
                 SUM(CAST(amount AS DOUBLE)) AS total_amount
-            FROM "{$this->tmpFilePath}"
+            FROM "{$this->filePath}"
             GROUP BY 
                 "settlement-id";
         END;
@@ -106,7 +100,7 @@ class IngestService
                 extract("year" from "posted-date") AS year,
                 extract("month" from "posted-date") AS month,
                 SUM(CAST(amount AS DOUBLE)) AS total_amount
-            FROM "{$this->tmpFilePath}"
+            FROM "{$this->filePath}"
             WHERE 
                 ("marketplace-name" = 'Amazon.com' OR "marketplace-name" = '')
                 AND "transaction-type" = 'Order'
@@ -138,7 +132,7 @@ class IngestService
                 "deposit-date",
                 "total-amount",
                 "currency"
-            FROM "{$this->tmpFilePath}"
+            FROM "{$this->filePath}"
             WHERE 
                 "total-amount" IS NOT NULL
                 AND "settlement-id" = '{$settlementId}'
@@ -147,8 +141,10 @@ class IngestService
         return $query;
     }
 
-    public function ingestSettlement(): array
+    public function ingestSettlement(Csv $csv): array
     {
+        $this->filePath = $csv->getFileWithSellerPath();
+
         $messages = [];
         $settlements = [];
         $settlementsTotals = [];
@@ -164,7 +160,9 @@ class IngestService
                         ->setEndDate(new \DateTime($row['settlement-end-date']))
                         ->setDepositDate(new \DateTime($row['deposit-date']))
                         ->setTotalAmount($row['total-amount'])
-                        ->setCurrency('USD');
+                        ->setCurrency('USD')
+                        ->setSeller($csv->getSeller())
+                        ->setCsv($csv);
 
                     if(abs($settlement->getTotalAmount() - $settlementsTotals[$row['settlement-id']]) > 0.01){
                         throw new IngestException(sprintf(
@@ -210,7 +208,7 @@ class IngestService
                     $this->entityManager->persist($unitsSold);
                 }
 
-                $this->entityManager->flush();
+                // $this->entityManager->flush();
             } catch(UniqueConstraintViolationException $e){
                 $messages[] = $this->getUniqueIdErrorMessage($e);
                 $this->doctrine->resetManager();
@@ -222,7 +220,7 @@ class IngestService
                 $messages[] = $e->getMessage();
             }
 
-            $this->entityManager->clear();
+            // $this->entityManager->clear();
         }
 
         return [

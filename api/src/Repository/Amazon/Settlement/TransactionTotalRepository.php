@@ -3,6 +3,7 @@
 namespace App\Repository\Amazon\Settlement;
 
 use App\Entity\Amazon\Settlement\TransactionTotal;
+use App\Entity\Seller;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -19,7 +20,7 @@ class TransactionTotalRepository extends ServiceEntityRepository
    /**
     * @return TransactionTotal[] Returns an array of TransactionTotal objects
     */
-   public function getSummaryByYearMonth($year, $month): array
+   public function getSummaryByYearMonth($year, $month, $seller = null): array
    {
         $maxYear = $year;
         $maxMonth = $month;
@@ -31,32 +32,18 @@ class TransactionTotalRepository extends ServiceEntityRepository
             ->addGroupBy('t.month')
             ->addGroupBy('t.totalType');
 
-        if(empty($year) || empty($month)){
-            $subQuery = $this->createQueryBuilder('t2')
-            ->select('MAX(t2.year) as max_year, MAX(t2.month) as max_month')
-            ->getQuery()
-            ->getSingleResult();
-    
-            $maxYear = $subQuery['max_year'];
-            $maxMonth = $subQuery['max_month'];
-
-            $qb
-                ->where('t.year >= :year')
-                ->setParameter('year', $maxYear)
-            ;
-
-            if($maxMonth < 12){
-              $qb
-                    ->orWhere('t.year >= :year2 AND t.month >= :month')
-                    ->setParameter('year2', $maxYear - 1)
-                    ->setParameter('month', $maxMonth)
-                ;
-            }
-        } else {
+        if(!empty($year) && !empty($month)){
             $qb->andWhere('t.year = :year')
                 ->andWhere('t.month = :month')
                 ->setParameter('year', $maxYear)
                 ->setParameter('month', $maxMonth);
+        }
+
+        if($seller instanceof Seller){
+            $qb->join('t.settlement', 's');
+            $qb->join('s.seller', 'sel');
+            $qb->andWhere('sel.id = :seller')
+                ->setParameter('seller', $seller);
         }
 
         return $qb
@@ -76,8 +63,6 @@ class TransactionTotalRepository extends ServiceEntityRepository
 
         $maxYear = $subQuery['max_year'];
         $maxMonth = $subQuery['max_month'];
-
-        
 
         return $this->createQueryBuilder('t')
            ->select('t.year, t.month, t.totalType')
