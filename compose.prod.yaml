@@ -2,7 +2,6 @@
 services:
   php:
     build:
-      # context: ./api
       target: frankenphp_prod
     environment:
       APP_SECRET: ${APP_SECRET}
