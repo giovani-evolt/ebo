@@ -64,8 +64,6 @@
 		php @frontController
 
 		file_server {
-
-{$SERVER_NAME:localhost:8
 			hide *.php
 		}
 	}
