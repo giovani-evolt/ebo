@@ -17,6 +17,8 @@ FROM frankenphp_upstream AS frankenphp_base
 
 WORKDIR /app
 
+RUN mkdir -p /app/var/
+
 # persistent / runtime deps
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install --no-install-recommends -y \
