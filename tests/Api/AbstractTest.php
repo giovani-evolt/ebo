@@ -11,15 +11,15 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class AbstractTest extends ApiTestCase
 {
-    CONST API_USER_URL = '/api/users';
+    CONST API_USER_URL = '/users';
 
-    CONST API_USER_ME_URL = '/api/user/me';
-    CONST API_USER_LOGIN_URL = '/api/login_check';
-    CONST API_SELLER_URL = '/api/sellers';
-    CONST API_CSV_URL = '/api/csvs';
-    CONST API_SETTLEMENT_URL = '/api/settlements';
-    CONST API_TRANSACTION_TOTALS_URL = '/api/transaction_totals';
-    CONST API_UNITS_SOLD_TOTAL_URL = '/api/units_sold';
+    CONST API_USER_ME_URL = '/user/me';
+    CONST API_USER_LOGIN_URL = '/login_check';
+    CONST API_SELLER_URL = '/sellers';
+    CONST API_CSV_URL = '/csvs';
+    CONST API_SETTLEMENT_URL = '/settlements';
+    CONST API_TRANSACTION_TOTALS_URL = '/transaction_totals';
+    CONST API_UNITS_SOLD_TOTAL_URL = '/units_sold';
     
     private ?EntityManagerInterface $entityManager;
     

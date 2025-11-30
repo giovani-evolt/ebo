@@ -31,7 +31,7 @@ class SellerTest extends AbstractTest
 
       $this->assertResponseStatusCodeSame(201);
       $this->assertJsonContains([
-          '@context' => '/api/contexts/User',
+          '@context' => '/contexts/User',
           '@type' => 'User',
       ]);
 
@@ -78,7 +78,7 @@ class SellerTest extends AbstractTest
 
         $this->assertResponseStatusCodeSame(201);
         $this->assertJsonContains([
-            '@context' => '/api/contexts/Seller',
+            '@context' => '/contexts/Seller',
             '@type' => 'Seller',
         ]);
 

@@ -32,7 +32,7 @@ class TokenTest extends SellerTest
 
       $this->assertResponseStatusCodeSame(201);
       $this->assertJsonContains([
-          '@context' => '/api/contexts/User',
+          '@context' => '/contexts/User',
           '@type' => 'User',
       ]);
 
