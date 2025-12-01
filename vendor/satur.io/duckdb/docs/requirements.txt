@@ -1,3 +1,0 @@
-mkdocs-codeinclude-plugin
-markdown-include
-mkdocs-material
