@@ -11,6 +11,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Saturio\DuckDB\DuckDB;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Vich\UploaderBundle\Storage\StorageInterface;
 
 class IngestService
 {
@@ -19,6 +20,7 @@ class IngestService
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ManagerRegistry $doctrine,
+        private StorageInterface $storage,
     )
     {
     }
@@ -143,7 +145,7 @@ class IngestService
 
     public function ingestSettlement(Csv $csv): array
     {
-        $this->filePath = $csv->getFileWithSellerPath();
+        $this->filePath = $this->storage->resolvePath($csv, 'file');
 
         $messages = [];
         $settlements = [];

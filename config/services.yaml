@@ -55,3 +55,14 @@ services:
         tags:
             - { name: api_platform.doctrine.orm.query_extension.collection }
             - { name: api_platform.doctrine.orm.query_extension.item }
+
+    Aws\S3\S3Client:
+        arguments:
+            - 
+                version: 'latest'
+                region: '%env(AWS_S3_REGION)%'
+                endpoint: '%env(AWS_S3_ENDPOINT)%'
+                credentials:
+                    key: '%env(AWS_S3_KEY)%'
+                    secret: '%env(AWS_S3_SECRET)%'
+                use_path_style_endpoint: true

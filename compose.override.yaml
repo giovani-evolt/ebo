@@ -21,6 +21,14 @@ services:
       - host.docker.internal:host-gateway
     tty: true
 
+  s3mock:
+    image: adobe/s3mock:latest
+    ports:
+      - "9090:9090"
+      - "9191:9191"
+    environment:
+      - initialBuckets=csvs-bucket
+
 ###> doctrine/doctrine-bundle ###
   database:
     ports:
