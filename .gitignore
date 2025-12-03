@@ -24,4 +24,4 @@
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
 
-/s3.storage/
+/minio-data

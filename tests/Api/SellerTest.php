@@ -70,6 +70,8 @@ class SellerTest extends AbstractTest
         $response = static::createClient()->request('POST', self::API_SELLER_URL, [
             'json' => [
                 'name' => 'Wuffes Shop',
+                'legalName' => 'Wuffes S.A. de C.V.',
+                'rfc' => 'WUSC920101XXX',
             ],
             'headers' => $this->getHeaders(),
         ]);
@@ -86,7 +88,8 @@ class SellerTest extends AbstractTest
     }
 
     static public function getFiles(): array{
-      return ['jul.csv', 'jun.csv'];
+      // return ['1264373020409.txt', '1266365020411.txt'];
+      return ['1262370020407.csv'];
     } 
 
     #[Depends('testCreateSeller')]
@@ -135,7 +138,7 @@ class SellerTest extends AbstractTest
       $tester = new CommandTester($command);
   
       $tester->execute([]);
-  
+
       // Validar la salida del comando
       $this->assertStringContainsString('Processed CSV', $tester->getDisplay());
 
@@ -144,7 +147,7 @@ class SellerTest extends AbstractTest
         'headers' => $this->getHeaders(),
         'query' => [
           'year' => 2025,
-          'month' => 7,
+          'month' => 11,
         ],
       ]);
 
@@ -155,10 +158,10 @@ class SellerTest extends AbstractTest
         $totals[$result['totalType']] = $result['totalAmount'];
       }
 
-      $this->assertEquals(3306974.70, $totals['GRSS']);
-      $this->assertEquals(210634.85, $totals['TXS']);
-      $this->assertEquals(-373.69, $totals['FRSH']);
-      $this->assertEquals(-350485.14, $totals['DSCN']);
+      $this->assertEquals(209261.80, $totals['GRSS']);
+      $this->assertEquals(13631.44, $totals['TXS']);
+      $this->assertEquals(-18.44, $totals['FRSH']);
+      $this->assertEquals(-19306.36, $totals['DSCN']);
     }
 
     #[Depends('testIngest')]
@@ -175,7 +178,7 @@ class SellerTest extends AbstractTest
         $totals[$result['totalType']][$result['month']] = $result['totalAmount'];
       }
 
-      $this->assertEquals(148066.71, $totals['GRSS'][8]);
+      $this->assertEquals(209261.80, $totals['GRSS'][11]);
     }
 
 }

@@ -61,6 +61,12 @@ class Seller
     #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'seller')]
     private Collection $users;
 
+    #[ORM\Column(length: 255)]
+    private ?string $legalName = null;
+
+    #[ORM\Column(length: 13)]
+    private ?string $rfc = null;
+
     public function __construct()
     {
         $this->settlements = new ArrayCollection();
@@ -214,6 +220,30 @@ class Seller
                 $user->setSeller(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getLegalName(): ?string
+    {
+        return $this->legalName;
+    }
+
+    public function setLegalName(string $legalName): static
+    {
+        $this->legalName = $legalName;
+
+        return $this;
+    }
+
+    public function getRfc(): ?string
+    {
+        return $this->rfc;
+    }
+
+    public function setRfc(string $rfc): static
+    {
+        $this->rfc = $rfc;
 
         return $this;
     }

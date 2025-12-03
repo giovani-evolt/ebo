@@ -57,12 +57,21 @@ services:
             - { name: api_platform.doctrine.orm.query_extension.item }
 
     Aws\S3\S3Client:
+        class: Aws\S3\S3Client
+        public: true
+        factory: [Aws\S3\S3Client, factory]
         arguments:
-            - 
+            -
                 version: 'latest'
-                region: '%env(AWS_S3_REGION)%'
-                endpoint: '%env(AWS_S3_ENDPOINT)%'
-                credentials:
-                    key: '%env(AWS_S3_KEY)%'
-                    secret: '%env(AWS_S3_SECRET)%'
+                region: '%env(AWS_REGION)%'
+                endpoint: '%env(AWS_ENDPOINT)%'
                 use_path_style_endpoint: true
+                credentials:
+                    key: '%env(AWS_ACCESS_KEY_ID)%'
+                    secret: '%env(AWS_SECRET_ACCESS_KEY)%'
+
+    flysystem.adapter.s3:
+        class: League\Flysystem\AwsS3V3\AwsS3V3Adapter
+        arguments:
+            - '@Aws\S3\S3Client'
+            - '%env(AWS_S3_BUCKET)%'

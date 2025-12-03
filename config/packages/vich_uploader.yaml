@@ -4,6 +4,7 @@ vich_uploader:
     metadata:
         type: attribute
         
+    storage: flysystem
     mappings:
        csv:
            uri_prefix: /csv

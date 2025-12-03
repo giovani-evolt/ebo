@@ -19,7 +19,7 @@ class IngestService
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private ManagerRegistry $doctrine,
+        private ManagerRegistry $registry,
         private StorageInterface $storage,
     )
     {
@@ -66,7 +66,7 @@ class IngestService
                 extract("month" from "posted-date") AS month,
                 SUM(CAST(amount AS DOUBLE)) AS total_amount,
                 SUM(CAST("quantity-purchased" AS INT)) AS total_qty_purchased
-            FROM "{$this->filePath}"
+            FROM {$this->getTmpFilePath()}
             WHERE 
                 "marketplace-name" = 'Amazon.com'
                 AND "transaction-type" = 'Order'
@@ -81,10 +81,10 @@ class IngestService
 
     protected function getTotalsBySettlementQuery(): string{
         $query = <<<END
-            SELECT
+            SELECT 
                 "settlement-id",
                 SUM(CAST(amount AS DOUBLE)) AS total_amount
-            FROM "{$this->filePath}"
+            FROM {$this->getTmpFilePath()}
             GROUP BY 
                 "settlement-id";
         END;
@@ -102,7 +102,7 @@ class IngestService
                 extract("year" from "posted-date") AS year,
                 extract("month" from "posted-date") AS month,
                 SUM(CAST(amount AS DOUBLE)) AS total_amount
-            FROM "{$this->filePath}"
+            FROM {$this->getTmpFilePath()}
             WHERE 
                 ("marketplace-name" = 'Amazon.com' OR "marketplace-name" = '')
                 AND "transaction-type" = 'Order'
@@ -134,7 +134,7 @@ class IngestService
                 "deposit-date",
                 "total-amount",
                 "currency"
-            FROM "{$this->filePath}"
+            FROM {$this->getTmpFilePath()}
             WHERE 
                 "total-amount" IS NOT NULL
                 AND "settlement-id" = '{$settlementId}'
@@ -143,86 +143,101 @@ class IngestService
         return $query;
     }
 
+    protected function getTmpFilePath(){
+        // return $this->filePath;
+        return sprintf("read_csv('%s', header=true, dateformat='%%%%Y-%%m-%%d')",$this->filePath);
+    }
+
+    public function setTmpFilePath($filePath){
+        $this->filePath = $filePath;
+
+        return $this;
+    }
+
     public function ingestSettlement(Csv $csv): array
     {
-        $this->filePath = $this->storage->resolvePath($csv, 'file');
-
         $messages = [];
         $settlements = [];
         $settlementsTotals = [];
+
+        // echo $this->getTotalsBySettlementQuery();
+        // dd('hey');
         foreach (DuckDB::sql($this->getTotalsBySettlementQuery())->rows(true) as $row) {
             $settlementsTotals[$row['settlement-id']] = $row['total_amount'];
-
             try{
-                $settlement = new Settlement();
-                foreach (DuckDB::sql($this->getSettlementByQuery($row['settlement-id']))->rows(true) as $row) {
-                    $settlement
-                        ->setSettlementId($row['settlement-id'])
-                        ->setStartDate(new \DateTime($row['settlement-start-date']))
-                        ->setEndDate(new \DateTime($row['settlement-end-date']))
-                        ->setDepositDate(new \DateTime($row['deposit-date']))
-                        ->setTotalAmount($row['total-amount'])
-                        ->setCurrency('USD')
-                        ->setSeller($csv->getSeller())
-                        ->setCsv($csv);
-
-                    if(abs($settlement->getTotalAmount() - $settlementsTotals[$row['settlement-id']]) > 0.01){
-                        throw new IngestException(sprintf(
-                            "Settlement %s has inconsistent total amount: expected %s but got %s, diff: %f", 
-                            $settlement->getSettlementId(),
-                            $settlement->getTotalAmount(),
-                            $settlement->getSettlementId(),
-                            abs($settlement->getTotalAmount() - $settlementsTotals[$row['settlement-id']])
-                        ));   
+                $this->entityManager->wrapInTransaction(function($em) use ($row, $csv, &$settlements, $settlementsTotals) {
+                    $settlement = new Settlement();
+                    foreach (DuckDB::sql($this->getSettlementByQuery($row['settlement-id']))->rows(true) as $row) {
+                        $settlement
+                            ->setSettlementId($row['settlement-id'])
+                            ->setStartDate(new \DateTime($row['settlement-start-date']))
+                            ->setEndDate(new \DateTime($row['settlement-end-date']))
+                            ->setDepositDate(new \DateTime($row['deposit-date']))
+                            ->setTotalAmount($row['total-amount'])
+                            ->setCurrency('USD')
+                            ->setSeller($csv->getSeller())
+                            ->setCsv($csv);
+    
+                        if(abs($settlement->getTotalAmount() - $settlementsTotals[$row['settlement-id']]) > 0.01){
+                            throw new IngestException(sprintf(
+                                "Settlement %s has inconsistent total amount: expected %s but got %s, diff: %f", 
+                                $settlement->getSettlementId(),
+                                $settlement->getTotalAmount(),
+                                $settlement->getSettlementId(),
+                                abs($settlement->getTotalAmount() - $settlementsTotals[$row['settlement-id']])
+                            ));   
+                        }
+    
+                        $settlements[$row['settlement-id']] = $settlement;
+                        $this->entityManager->persist($settlement);
                     }
-
-                    $settlements[$row['settlement-id']] = $settlement;
-                    $this->entityManager->persist($settlement);
-                }
-                
-                foreach (DuckDB::sql($this->getSettlementTotalsQuery($settlement->getSettlementId()))->rows(true) as $row) {
-                    if($type = $this->getTransactionType($row)){
-                        $transactionTotal = new TransactionTotal();
-                        $transactionTotal
-                            ->setTotalType($type)
+                    
+                    foreach (DuckDB::sql($this->getSettlementTotalsQuery($settlement->getSettlementId()))->rows(true) as $row) {
+                        if($type = $this->getTransactionType($row)){
+                            $transactionTotal = new TransactionTotal();
+                            $transactionTotal
+                                ->setTotalType($type)
+                                ->setYear($row['year'])
+                                ->setMonth($row['month'])
+                                ->setTransactionType($row['transaction-type'])
+                                ->setAmountType($row['amount-type'])
+                                ->setAmountDescription($row['amount-description'])
+                                ->setTotalAmount($row['total_amount'])
+                                ->setSettlement($settlement);
+                            $settlement->addTransactionTotal($transactionTotal);
+                            $this->entityManager->persist($transactionTotal);
+                        }
+                    }
+    
+                    // UNITS SOLD /////////////////////////////////////////////////////////////////////////////////
+                    foreach (DuckDB::sql($this->getUnitsSoldQuery($settlement->getSettlementId()))->rows(true) as $row) {
+                        $unitsSold = new UnitsSold();
+                        $unitsSold
+                            ->setSettlement($settlement)
                             ->setYear($row['year'])
                             ->setMonth($row['month'])
-                            ->setTransactionType($row['transaction-type'])
-                            ->setAmountType($row['amount-type'])
-                            ->setAmountDescription($row['amount-description'])
-                            ->setTotalAmount($row['total_amount'])
-                            ->setSettlement($settlement);
-                        $settlement->addTransactionTotal($transactionTotal);
-                        $this->entityManager->persist($transactionTotal);
+                            ->setSku($row['sku'])
+                            ->setQuantityPurchased((int)(string)$row['total_qty_purchased'])
+                            ->setTotalAmount($row['total_amount']);
+                        $this->entityManager->persist($unitsSold);
                     }
-                }
+                });   
+            }catch(\Exception $e){
+                $messages[] = sprintf(
+                    'Error processing settlement %s: %s',
+                    $row['settlement-id'],
+                    $e instanceof UniqueConstraintViolationException
+                        ? $this->getUniqueIdErrorMessage($e)
+                        : $e->getMessage()
+                );
 
-                // UNITS SOLD /////////////////////////////////////////////////////////////////////////////////
-                foreach (DuckDB::sql($this->getUnitsSoldQuery($settlement->getSettlementId()))->rows(true) as $row) {
-                    $unitsSold = new UnitsSold();
-                    $unitsSold
-                        ->setSettlement($settlement)
-                        ->setYear($row['year'])
-                        ->setMonth($row['month'])
-                        ->setSku($row['sku'])
-                        ->setQuantityPurchased((int)(string)$row['total_qty_purchased'])
-                        ->setTotalAmount($row['total_amount']);
-                    $this->entityManager->persist($unitsSold);
-                }
+                // Clear the EntityManager to avoid partial persists
+                $this->entityManager->clear();
+                // Reset the EntityManager to avoid inconsistent state
+                $this->entityManager = $this->registry->resetManager();
 
-                // $this->entityManager->flush();
-            } catch(UniqueConstraintViolationException $e){
-                $messages[] = $this->getUniqueIdErrorMessage($e);
-                $this->doctrine->resetManager();
-            } catch (\Doctrine\DBAL\Exception $e) {
-                $messages[] = 'Database error: ' . $e->getMessage();
-                $this->doctrine->resetManager();
-                //Log Error
-            } catch (\Exception $e){
-                $messages[] = $e->getMessage();
+                $csv = $this->entityManager->getRepository(Csv::class)->find($csv->getId());
             }
-
-            // $this->entityManager->clear();
         }
 
         return [

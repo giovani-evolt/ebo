@@ -202,8 +202,17 @@ class Csv
         return $this->file;
     }
 
+    public function setCsvFile(?File $file = null): void
+    {
+        $this->csvFile = $file;
+
+        if ($file) {
+            $this->updatedAt = new \DateTimeImmutable();
+        }
+    }
+
     public function getFileWithSellerPath(){
-        return '/app/csv/'.$this->getSeller()->getCode().'/'.$this->getFilename();
+        return $this->getSeller()->getCode().'/'.$this->getFilename();
     }
 
     public function getMessages(): ?array
